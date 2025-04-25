@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+
+# Django
+*.log
+*.pot
+*.pyc
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+static/
+
+# Vue/Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env.local
+.env.*.local
+.DS_Store
+frontend/dist/
+
+# 环境变量文件（但保留示例文件）
+.env
+.env.production
+
+# 进程ID文件
+*.pid
+
+# 数据文件（Docker卷挂载数据）
+data/
+
+# 编辑器和IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 打包文件
+*.zip
+*.tar
+*.gz

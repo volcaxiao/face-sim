@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    restart: always
+    volumes:
+      - ./data/media:/app/media
+      - ./data/static:/app/static
+    environment:
+      - DEBUG=False
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-your-secret-key-here}
+      - DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,backend
+    command: >
+      bash -c "python manage.py migrate &&
+               python manage.py collectstatic --noinput &&
+               gunicorn --bind 0.0.0.0:8000 facesim.wsgi:application"
+
+  frontend:
+    build: ./frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    environment:
+      - VUE_APP_API_URL=/api
+
+volumes:
+  media_data:
+  static_data:
