@@ -7,10 +7,18 @@ services:
     volumes:
       - ./data/media:/app/media
       - ./data/static:/app/static
+      - ./backend:/app  # 开发时方便修改代码
     environment:
-      - DEBUG=False
+      - DEBUG=${DEBUG:-False}
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-your-secret-key-here}
-      - DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,backend
+      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,backend}
+      # Face++ API配置
+      - FACE_PLUS_PLUS_API_KEY=${FACE_PLUS_PLUS_API_KEY}
+      - FACE_PLUS_PLUS_API_SECRET=${FACE_PLUS_PLUS_API_SECRET}
+      - FACE_PLUS_PLUS_API_URL=${FACE_PLUS_PLUS_API_URL:-https://api-cn.faceplusplus.com/facepp/v3}
+      - FACE_PLUS_PLUS_RETURN_ATTRIBUTES=${FACE_PLUS_PLUS_RETURN_ATTRIBUTES:-gender,age,beauty}
+      - FACE_PLUS_PLUS_RETURN_LANDMARK=${FACE_PLUS_PLUS_RETURN_LANDMARK:-0}
+      - FACE_PLUS_PLUS_COMPARE_THRESHOLD=${FACE_PLUS_PLUS_COMPARE_THRESHOLD:-70.0}
     command: >
       bash -c "python manage.py migrate &&
                python manage.py collectstatic --noinput &&
@@ -22,9 +30,12 @@ services:
     depends_on:
       - backend
     ports:
-      - "80:80"
+      - "${PORT:-80}:80"
+    volumes:
+      - ./frontend:/app  # 开发时方便修改代码
     environment:
       - VUE_APP_API_URL=/api
+      - NODE_ENV=${NODE_ENV:-production}
 
 volumes:
   media_data:

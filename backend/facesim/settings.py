@@ -1,3 +1,12 @@
+import os
+from pathlib import Path
+import dotenv
+
+# 加载.env文件
+dotenv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env')
+if os.path.exists(dotenv_path):
+    dotenv.load_dotenv(dotenv_path)
+
 """
 Django settings for facesim project.
 
@@ -10,17 +19,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-import os
-from pathlib import Path
-import dotenv
-
-# 加载 .env 文件
-env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env')
-if os.path.exists(env_path):
-    dotenv.load_dotenv(env_path)
+from dotenv import load_dotenv
 
 # 加载.env文件中的环境变量
-from dotenv import load_dotenv
 load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -168,6 +169,8 @@ FACE_PLUS_PLUS = {
     'API_KEY': os.environ.get('FACE_PLUS_PLUS_API_KEY', ''),
     'API_SECRET': os.environ.get('FACE_PLUS_PLUS_API_SECRET', ''),
     'API_URL': os.environ.get('FACE_PLUS_PLUS_API_URL', 'https://api-cn.faceplusplus.com/facepp/v3'),
+    'RETURN_ATTRIBUTES': os.environ.get('FACE_PLUS_PLUS_RETURN_ATTRIBUTES', 'gender,age,beauty'),
+    'RETURN_LANDMARK': os.environ.get('FACE_PLUS_PLUS_RETURN_LANDMARK', '0'),
 }
 
 # 创建必要的目录

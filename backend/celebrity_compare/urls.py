@@ -1,15 +1,24 @@
 from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .views import CelebrityViewSet, FaceCompareAPIView, CrawlCelebritiesAPIView, ComparisonResultDetailAPIView
+from rest_framework import routers
+from .views import (
+    CelebrityViewSet, 
+    FaceCompareAPIView, 
+    ComparisonResultDetailAPIView,
+    ComparisonStatusAPIView,
+    CrawlCelebritiesAPIView,
+    ComparisonHistoryAPIView,
+    ShareComparisonAPIView
+)
 
-# 创建路由器并注册viewsets
-router = DefaultRouter()
-router.register(r'celebrities', CelebrityViewSet)
+router = routers.DefaultRouter()
+router.register('celebrities', CelebrityViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
     path('compare/', FaceCompareAPIView.as_view(), name='face-compare'),
-    # 添加获取单个比对结果的API端点
-    path('compare/<int:pk>/', ComparisonResultDetailAPIView.as_view(), name='comparison-detail'),
-    path('crawl/', CrawlCelebritiesAPIView.as_view(), name='crawl-celebrities'),
+    path('compare/<uuid:pk>/', ComparisonResultDetailAPIView.as_view(), name='comparison-detail'),
+    path('compare/status/<uuid:pk>/', ComparisonStatusAPIView.as_view(), name='comparison-status'),
+    path('compare/history/', ComparisonHistoryAPIView.as_view(), name='comparison-history'),
+    path('compare/share/<uuid:pk>/', ShareComparisonAPIView.as_view(), name='share-comparison'),
+    path('admin/crawl-celebrities/', CrawlCelebritiesAPIView.as_view(), name='crawl-celebrities'),
 ]
