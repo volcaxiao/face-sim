@@ -2,6 +2,7 @@ import os
 import json
 import uuid
 import requests
+import concurrent.futures  # 添加并行处理模块
 from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import render
@@ -213,7 +214,12 @@ class FaceCompareAPIView(APIView):
         
         comparison.progress = 20
         comparison.save()
-        all_matches = []  # 存储所有匹配结果
+        
+        # 创建一个线程安全的结构来存储前三名
+        import threading
+        top_matches_lock = threading.Lock()  # 线程锁用于保护top_matches更新
+        # top_matches存储前三名，初始化为空列表
+        top_matches = []
         
         # 上传用户照片并获取face_token
         try:
@@ -296,37 +302,60 @@ class FaceCompareAPIView(APIView):
             comparison.progress = 50
             comparison.save()
             
-            for celebrity in celebrities:
+            def compare_with_celebrity(celebrity):
                 # 跳过没有face_token的明星
                 if not celebrity.face_token:
-                    continue
+                    return
                     
-                # 调用 FacePPAPI 比较人脸
+                # 执行人脸比对
                 similarity = FacePPAPI.compare_faces(user_face_token, celebrity.face_token)
+                if similarity is None:
+                    return
+                    
+                # 获取比对结果对象
+                result = {
+                    'celebrity_id': celebrity.id,
+                    'similarity': similarity
+                }
                 
-                # 增加进度 - 这个阶段占比最大，从50%到90%
-                processed_celebrities += 1
-                if processed_celebrities % 5 == 0 or processed_celebrities == total_celebrities:
-                    # 比对过程占40%的进度(从50%到90%)
-                    progress = 50 + int((processed_celebrities / total_celebrities) * 40)
-                    comparison.progress = min(progress, 90)
-                    comparison.save()
-                
-                # 记录所有匹配结果，无论相似度如何
-                if similarity is not None:
-                    all_matches.append({
-                        'celebrity_id': celebrity.id,
-                        'similarity': similarity
-                    })
+                # 使用线程锁来保护更新top_matches的操作
+                with top_matches_lock:
+                    # 根据相似度动态维护前三名
+                    if len(top_matches) < 3:
+                        # 如果不足三个，直接添加
+                        top_matches.append(result)
+                        # 添加后按相似度降序排序
+                        top_matches.sort(key=lambda x: x['similarity'], reverse=True)
+                    elif similarity > top_matches[-1]['similarity']:
+                        # 如果已有三个且当前相似度大于第三名，替换第三名
+                        top_matches[-1] = result
+                        # 替换后重新排序
+                        top_matches.sort(key=lambda x: x['similarity'], reverse=True)
+            
+            # 使用线程池并行执行比对
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                futures = [executor.submit(compare_with_celebrity, celebrity) for celebrity in celebrities]
+                for future in concurrent.futures.as_completed(futures):
+                    try:
+                        # 捕获任何可能的异常
+                        future.result()
+                    except Exception as e:
+                        print(f"比对过程中发生错误: {str(e)}")
+                    
+                    # 更新进度
+                    processed_celebrities += 1
+                    if processed_celebrities % 5 == 0 or processed_celebrities == total_celebrities:
+                        progress = 50 + int((processed_celebrities / total_celebrities) * 40)
+                        comparison.progress = min(progress, 90)
+                        comparison.save()
             
             # 如果没有任何匹配结果
-            if not all_matches:
+            if not top_matches:
                 print("没有找到任何匹配结果")
                 return []
             
-            # 按相似度排序，返回前三个最相似的结果
-            all_matches.sort(key=lambda x: x['similarity'], reverse=True)
-            return all_matches[:3]  # 返回前三个最相似的
+            # 直接返回已排序好的前三名
+            return top_matches
             
         except requests.exceptions.RequestException as e:
             print(f"网络请求错误: {str(e)}")
@@ -478,34 +507,6 @@ class ComparisonStatusAPIView(APIView):
                 {'error': str(e)}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
-
-class CrawlCelebritiesAPIView(APIView):
-    """
-    爬取明星照片的API，仅限管理员使用
-    """
-    permission_classes = [permissions.IsAdminUser]
-    
-    def post(self, request):
-        try:
-            # 导入爬虫脚本
-            from scripts.celebrity_crawler import crawl_celebrities
-            
-            # 获取请求参数
-            source = 'sina'  # 只支持新浪爬虫
-            limit = request.data.get('limit', 50)
-            page_count = request.data.get('page_count', 5)
-            
-            # 启动爬虫任务
-            result = crawl_celebrities(source=source, page_count=int(page_count), limit=int(limit))
-            
-            return Response({
-                "message": "爬取任务已完成，请查看管理后台",
-                "result": result
-            }, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 class ComparisonHistoryAPIView(APIView):
     """
